@@ -1,0 +1,32 @@
+{% extends 'SilentD/base2.html' %}
+{% load staticfiles %}
+{% block body_block %}
+    <section class="content-header">
+        <h1>
+            Welcome {{ user.first_name }} to the AMR Detector
+        </h1>
+    </section>
+
+    <!-- Main content -->
+    <section class="content">
+        <div class="row">
+            <div class="col-md-4">
+                <!-- Default box -->
+                <div class="box box-solid box-success">
+                    <div class="box-header">
+                        <h3 class="box-title">Information</h3>
+                    </div>
+                    <div class="box-body">
+                        <p>This webtool assists with the detection of antimicrobial resistance genes in bacteria genomes.
+                            Genomes can be uploaded in either .fasta or .fastq.gz format. Upon upload, species determination will be performed
+                        followed by AMR detection, and result generation. </p><br>
+
+                        Here are two sample bacteria genomes to get you started: <br>
+                        <a href='{% static 'NZ_CTHP01000001.1_Salmonella_enterica.fasta' %}'> Salmonella genome</a><br>
+                        <a href='{% static 'NZ_JNPQ01000001.1_Escherichia_coli.fasta' %}'> E.coli genome</a>
+                    </div><!-- /.box-body -->
+                </div><!-- /.box -->
+            </div><!-- /.col -->
+        </div>
+    </section>
+{% endblock %}

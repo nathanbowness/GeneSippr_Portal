@@ -1,0 +1,8 @@
+*.pyc
+*~
+__pycache__
+/documents
+RefSeq.msh
+*.nhr
+*.nin
+*.nsq
