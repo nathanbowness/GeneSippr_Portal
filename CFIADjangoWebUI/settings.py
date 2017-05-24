@@ -10,7 +10,9 @@ https://docs.djangoproject.com/en/1.7/ref/settings/
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 import os
+import django
 import djcelery
+import kombu
 
 
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
@@ -30,20 +32,20 @@ ALLOWED_HOSTS = ['*']
 
 # Application definition
 
-INSTALLED_APPS = (
-    'grappelli',
+INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'grappelli',
     'djcelery',
-    'kombu.transport.django',
+    #'kombu.transport.django',
     'SilentD',
-)
+]
 
-MIDDLEWARE_CLASSES = (
+MIDDLEWARE_CLASSES = [
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -51,7 +53,7 @@ MIDDLEWARE_CLASSES = (
     'django.contrib.auth.middleware.SessionAuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-)
+]
 
 
 ROOT_URLCONF = 'CFIADjangoWebUI.urls'
@@ -62,7 +64,7 @@ LOGIN_URL = '/'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql_psycopg2',
+        'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'mydb',
 
         # The following settings are used to set up Postgres
@@ -76,6 +78,8 @@ DATABASES = {
 
 # Internationalization
 # https://docs.djangoproject.com/en/1.7/topics/i18n/
+
+django.setup()
 
 LANGUAGE_CODE = 'en-us'
 
@@ -131,6 +135,7 @@ import SilentD.tasks
 # BROKER_URL = 'amqp://'
 BROKER_URL = 'amqp://guest:guest@localhost:5672//'
 CELERY_RESULT_BACKEND = 'amqp://'
+TIME_ZONE = 'America/Detroit'
 # djcelery.setup_loader()
 CELERY_IMPORTS = ("tasks", )
 CELERY_ALWAYS_EAGER = False

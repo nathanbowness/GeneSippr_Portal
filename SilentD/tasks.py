@@ -72,8 +72,7 @@ def amr_task(self, obj_id):
                     project_obj.save()
 
             except Exception as e:
-                #  e.__doc__, e.message
-                print("Error, GeneSeekR failed!")
+                print("Error, GeneSeekR failed!", e.__doc__, e.message)
                 project_obj.amr_results = "Error"
 
         else:
@@ -119,5 +118,5 @@ def amr_task(self, obj_id):
                                 os.remove(os.path.join(root, name))
 
             except Exception as e:
-                print("Error, SRST2 failed!", e.__doc__) # e.message
+                print("Error, SRST2 failed!", e.__doc__, e.message)
                 project_obj.amr_results = "Error"

@@ -203,7 +203,7 @@ def file_upload(request):
             new_project.save()
 
             # Start the automatic analysis
-            amr_task(new_project.id)   # .delay()
+            amr_task.delay(new_project.id)   # .delay()
     return render(request, 'SilentD/file_upload.html', {})
 
 
