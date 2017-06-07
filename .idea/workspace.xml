@@ -2,26 +2,10 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="bdcb486f-3d37-4794-89a0-ea43624b1ae3" name="Default" comment="Add in the start of a developer install script for the portal.">
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/GeneSippr/run_genesippr.sh" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/templates/SilentD/create_project.html" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/templates/SilentD/projects.html" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/SilentD/migrations/0001_initial.py" afterPath="" />
       <change type="DELETED" beforePath="$PROJECT_DIR$/SilentD/migrations/0002_project_reference2.py" afterPath="" />
       <change type="DELETED" beforePath="$PROJECT_DIR$/SilentD/migrations/0003_remove_project_reference2.py" afterPath="" />
       <change type="DELETED" beforePath="$PROJECT_DIR$/SilentD/migrations/0004_auto_20170523_1049.py" afterPath="" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/templates/SilentD/amr.html" afterPath="$PROJECT_DIR$/templates/SilentD/genesippr.html" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/CFIADjangoWebUI/settings.py" afterPath="$PROJECT_DIR$/CFIADjangoWebUI/settings.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/CFIADjangoWebUI/urls.py" afterPath="$PROJECT_DIR$/CFIADjangoWebUI/urls.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/SilentD/models.py" afterPath="$PROJECT_DIR$/SilentD/models.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/SilentD/tasks.py" afterPath="$PROJECT_DIR$/SilentD/tasks.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/SilentD/urls.py" afterPath="$PROJECT_DIR$/SilentD/urls.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/SilentD/views.py" afterPath="$PROJECT_DIR$/SilentD/views.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/static/css/AdminLTE.css" afterPath="$PROJECT_DIR$/static/css/AdminLTE.css" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/templates/SilentD/base2.html" afterPath="$PROJECT_DIR$/templates/SilentD/base2.html" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/templates/SilentD/file_upload.html" afterPath="$PROJECT_DIR$/templates/SilentD/file_upload.html" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/templates/SilentD/index.html" afterPath="$PROJECT_DIR$/templates/SilentD/index.html" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/templates/SilentD/login.html" afterPath="$PROJECT_DIR$/templates/SilentD/login.html" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="TRACKING_ENABLED" value="true" />
@@ -77,14 +61,24 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="tasks.py" pinned="false" current-in-tab="true">
+      <file leaf-file-name="tasks.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/SilentD/tasks.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="280">
-              <caret line="14" column="0" lean-forward="true" selection-start-line="14" selection-start-column="0" selection-end-line="14" selection-end-column="0" />
+            <state relative-caret-position="240">
+              <caret line="12" column="66" lean-forward="true" selection-start-line="12" selection-start-column="66" selection-end-line="12" selection-end-column="66" />
               <folding>
                 <element signature="e#17#55#0" expanded="true" />
               </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="workspace.xml" pinned="false" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/.idea/workspace.xml">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="0">
+              <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
+              <folding />
             </state>
           </provider>
         </entry>
@@ -119,6 +113,7 @@
   <component name="Git.Settings">
     <option name="PREVIOUS_COMMIT_AUTHORS">
       <list>
+        <option value="Nathan Bowness &lt;nathanbowness@gmail.com&gt;" />
         <option value="--replace-all &lt;nathanbowness@gmail.com&gt;" />
         <option value="Nathan Bowness" />
       </list>
@@ -761,7 +756,14 @@
       <option name="project" value="LOCAL" />
       <updated>1495703604446</updated>
     </task>
-    <option name="localTasksCounter" value="4" />
+    <task id="LOCAL-00004" summary="Made changes to include projects, updated the genesippr tab to incorporate relevant tables. Fixed some design features to improve functionality for the results.">
+      <created>1496847249924</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1496847249924</updated>
+    </task>
+    <option name="localTasksCounter" value="5" />
     <servers />
   </component>
   <component name="TodoView">
@@ -848,7 +850,8 @@
     <MESSAGE value="Updated django, django-celery, ampq and a few other libraries. Implemented celery once again into the code, however did not update it due to many conflicts." />
     <MESSAGE value="Update .gitignore and workspace layout." />
     <MESSAGE value="Add in the start of a developer install script for the portal." />
-    <option name="LAST_COMMIT_MESSAGE" value="Add in the start of a developer install script for the portal." />
+    <MESSAGE value="Made changes to include projects, updated the genesippr tab to incorporate relevant tables. Fixed some design features to improve functionality for the results." />
+    <option name="LAST_COMMIT_MESSAGE" value="Made changes to include projects, updated the genesippr tab to incorporate relevant tables. Fixed some design features to improve functionality for the results." />
   </component>
   <component name="WindowStateProjectService">
     <state width="835" height="483" key="Git.Branch.Popup" />
@@ -861,13 +864,6 @@
     <watches-manager />
   </component>
   <component name="editorHistoryManager">
-    <entry file="file://$PROJECT_DIR$/static/css/select2.css">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="0">
-          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/static/css/dropzone.css">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="0">
@@ -1237,11 +1233,19 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/SilentD/tasks.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="280">
-          <caret line="14" column="0" lean-forward="true" selection-start-line="14" selection-start-column="0" selection-end-line="14" selection-end-column="0" />
+        <state relative-caret-position="240">
+          <caret line="12" column="66" lean-forward="true" selection-start-line="12" selection-start-column="66" selection-end-line="12" selection-end-column="66" />
           <folding>
             <element signature="e#17#55#0" expanded="true" />
           </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/.idea/workspace.xml">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="0">
+          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
+          <folding />
         </state>
       </provider>
     </entry>
