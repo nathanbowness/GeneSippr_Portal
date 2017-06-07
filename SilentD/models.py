@@ -105,5 +105,12 @@ class Project(Base):
     reference = models.CharField(max_length=200, blank=True)
     type = models.CharField(max_length=20, blank=True)
     amr_results = models.CharField(max_length=50, blank=True)
-    geneseekr_results = models.FileField(blank=True, null=True)
-    srst2_results = models.FileField(blank=True, null=True)
+
+
+class Results(Base):
+    """The important results from running genesippr will be stored here."""
+    strain = models.CharField(max_length=50, blank=True)
+    genus = models.CharField(max_length=50, blank=True)
+    matches = models.CharField(max_length=50, blank=True)
+    runtype = models.CharField(max_length=20, blank=True)
+    project_id = models.IntegerField(default=0)  # Add id of the project results are for

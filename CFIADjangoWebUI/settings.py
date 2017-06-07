@@ -39,7 +39,6 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'grappelli',
     'djcelery',
     #'kombu.transport.django',
     'SilentD',
@@ -135,7 +134,10 @@ import SilentD.tasks
 # BROKER_URL = 'amqp://'
 BROKER_URL = 'amqp://guest:guest@localhost:5672//'
 CELERY_RESULT_BACKEND = 'amqp://'
-TIME_ZONE = 'America/Detroit'
 # djcelery.setup_loader()
+CELERY_TIMEZONE = 'UTC'
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
 CELERY_IMPORTS = ("tasks", )
 CELERY_ALWAYS_EAGER = False

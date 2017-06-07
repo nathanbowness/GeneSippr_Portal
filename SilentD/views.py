@@ -1,23 +1,20 @@
 import csv
-import json
+import os
+import datetime
 # Django Related Imports
 from django.shortcuts import render
-from django.contrib.auth import authenticate
-from django.contrib.auth import login
-from django.contrib.auth import logout
+from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponseRedirect
-from django.http import HttpResponse
+from django.http import HttpResponseRedirect, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib import messages
 from .forms import UserForm
 # Database Models
-from .models import Data
-from .models import Project
-from .models import Profile
-
+from .models import Data, Project, Profile, Results
+from django.utils import timezone
+from collections import defaultdict, OrderedDict
 # Celery Tasks
-from .tasks import amr_task
+from .tasks import genesippr_task, result_folder_names, get_resultdir, get_review_result, delete_project
 
 
 # Create your views here.
@@ -129,189 +126,275 @@ def file_upload(request):
         print("User %s uploading %s " % (username, request.FILES))
         # Create a new database entry for the file
         file_name = str(request.FILES['file'])
-        # Save model first to generate ID, then upload the file to the folder with ID
-        if 'fastq.gz' in file_name:
-            fastq_list = Data.objects.filter(user=username, type='FastQ').order_by('-date')
 
+        if 'fastq.gz' in file_name:
+            # creating a new Data element for the file to be saved in the database
             newdoc = Data(user=username, type='FastQ')
             newdoc.save()
-            newdoc.file = request.FILES['file']
+            newdoc.file = request.FILES['file']     # add the file to the newdoc
             newdoc.save()
             newdoc.name = newdoc.file.name.split('/')[-1]
             newdoc.save()
 
-            # Try to find a matching fastq in database to merge the pair into a project. This is done by comparing the
-            # file name with the corresponding R1 and R2 values so see if they match. The most recently uploaded files
-            # will be matched and script will exit loop and proceed
+        return render(request, 'SilentD/file_upload.html', {})
 
-            file_name_split = newdoc.name.split('_')
-            if len(file_name_split) < 2:
-                return render(request, 'SilentD/file_upload.html', {})
-            else:
-                file_name_1 = file_name_split[0]
-                if '_R1' in newdoc.name:
-                    r_value_1 = 'R1'
-                elif 'R2' in newdoc.name:
-                    r_value_1 = 'R2'
-                else:
-                    pass
-                    # Improperly named file, error error
-
-                # Search for a corresponding file that matches
-                for fastq in fastq_list:
-                    file_name_2 = fastq.name.split('_')[0]
-                    if '_R1' in fastq.name:
-                        r_value_2 = 'R1'
-                    elif '_R2' in fastq.name:
-                        r_value_2 = 'R2'
-
-                    if file_name_1 == file_name_2:
-                        if (r_value_1 == 'R1' and r_value_2 == 'R2') or (r_value_1 == 'R2' and r_value_2 == 'R1'):
-                            print("Found A Match!")
-                            # Create a new project database entry with the two matched files, organism to be determined
-                            # using mash
-
-                            new_project = Project(user=username, description=file_name_1)
-                            new_project.save()
-                            new_project.files.add(newdoc)
-                            new_project.files.add(fastq)
-                            new_project.num_files = 2
-                            new_project.description = file_name_1
-                            new_project.type = 'fastq'
-                            new_project.save()
-                            # Start the automatic analysis now that a match has been found
-                            amr_task.delay(new_project.id)
-                            return render(request, 'SilentD/file_upload.html', {})
-
-            print('No Match Found')
-
-        elif '.fasta' in file_name:
-            # Database entry must be saved first to generate unique ID
-            newdoc = Data(user=username, type='Fasta')
-            newdoc.save()
-            # Upload the file to database entry and corresponding unique folder
-            newdoc.file = request.FILES['file']
-            newdoc.save()
-            newdoc.name = newdoc.file.name.split('/')[-1]
-            newdoc.save()
-
-            new_project = Project(user=username, description=newdoc.name, organism="Temp")
-            new_project.save()
-            new_project.files.add(newdoc)
-            new_project.num_files = 1
-            new_project.type = 'fasta'
-            new_project.save()
-
-            # Start the automatic analysis
-            amr_task.delay(new_project.id)   # .delay()
+    print('No Match Found')
     return render(request, 'SilentD/file_upload.html', {})
 
 
 @login_required
-def amr(request):
+def projects(request):
+    # Project.objects.all().delete()
+    # Data.objects.all().delete()
+    # Results.objects.all().delete()
+    username = ''
+    if request.user.is_authenticated():
+        username = request.user.username
 
+    if request.method == 'POST':
+        print(request.POST)
+
+        if "job" in request.POST:
+            job = request.POST.get('job')
+            proj_id = request.POST.get('project_id')
+            pro_obj = Project.objects.get(id=proj_id)
+
+            if job == 'geneseekr_start':
+                print("Start the GeneSeekr job.")
+
+                pro_obj.amr_results = "Running"
+                pro_obj.save()
+                genesippr_task.delay(pro_obj.id)
+                print("Finished the GeneSeekr job.")
+
+        elif "amr_results" in request.POST:
+            # currently loads all projects from the user into view
+            # later this could potentially trigger th results pane actually opening
+            all_projects = Project.objects.filter(user=username)
+            print(all_projects)
+            print("print done")
+            return render(request, 'SilentD/genesippr.html', {'projects': all_projects})
+
+        elif "delete" in request.POST:
+            proj_id = request.POST['id']  # 'delete' works as well
+            print(proj_id)
+            delete_project(proj_id)
+            pro_obj = Project.objects.get(id=proj_id)
+            delete_project(proj_id)
+            pro_obj.delete()
+
+    # Retrieve all uploaded files relating to the user
+    fastq_projects = Project.objects.filter(user=username, type='fastq')
+    return render(request, 'SilentD/projects.html', {'fastq_projects': fastq_projects})
+
+
+@login_required
+def create_project(request):
+    username = ''
+    if request.user.is_authenticated():
+        username = request.user.username
+
+    project_creation_fail = False
+
+    if request.method == 'POST':
+        print(request.POST)
+        if 'project' in request.POST:
+            ids = request.POST.get("ids")
+            print(ids)
+            name_list = str(ids)
+            print(name_list)
+            project_files_fastq = []
+            now = timezone.now()
+            delta = datetime.timedelta(hours=2)
+            recent_files = Data.objects.filter(user=username).order_by('-date')
+            for file in recent_files:
+                if (now - file.date) < delta:
+                    if file.name in name_list:
+                        print(file.type)
+                        if file.type == "Fastq":
+                            project_files_fastq.append(file)
+                    print("A Recent file was uploaded to the project at:", file.date)
+                else:
+                    print("A Non-recent file was uploaded to the project at:", file.date)
+
+            if len(project_files_fastq) > 1:
+                new_project = Project(user=username, description=now)
+                new_project.save()
+                for obj in project_files_fastq:
+                    new_project.files.add(obj)
+                new_project.num_files = len(project_files_fastq)
+                new_project.type = "fastq"
+                new_project.save()
+
+        else:
+            description = request.POST.get('name')
+            if request.POST.get('ids'):
+                # FastQ
+                data_file_list = request.POST.get('ids')
+            else:
+                print("Files uploaded did not contain fastq files") # ......Neeed better solution to have files show up
+                return render(request, 'SilentD/create_project.html', {})
+
+            project_type = request.POST.get('type')
+
+            if data_file_list and description and project_type:
+                data_file_list2 = data_file_list.replace('id=', '')
+                data_list = data_file_list2.split('&')
+
+                data_obj_list = []
+                filename_list = []
+                failed_list = []
+                for item in data_list:
+                    data_obj = Data.objects.get(id=item)
+                    data_obj_list.append(data_obj)
+                    filename_list.append(str(data_obj.name))
+
+                if project_type == 'fastq':
+                    # Conditions below are tested in order for files to be added to a project
+                    # File count is an even number
+                    # Files have proper formatted _R1 or _R2 in file name
+                    # Each file is paired with its other R value
+
+                    if len(data_list) % 2 != 0:
+                        # List has uneven number of files due retrieval error
+                        project_creation_fail = True
+                    else:
+                        # Create a dictionary of strain names, and populate with found R values
+                        file_dict = defaultdict(list)
+                        for filename in filename_list:
+                            name = filename.split("_")[0]
+                            if '_R1' in filename:
+                                rvalue = 'R1'
+                                file_dict[name].append(rvalue)
+                            elif '_R2' in filename:
+                                rvalue = 'R2'
+                                file_dict[name].append(rvalue)
+                            else:
+                                error_message = "Error! File %s does not have a correct RValue in the format _R1 or _R2" \
+                                                % name
+                                messages.add_message(request, messages.ERROR, error_message)
+
+                        # Verify all files are paired and have a match of R1 and R2, not R1,R1, R2,R2 or only 1 R value
+
+                        for key, value in file_dict.items():
+                            if len(value) == 2:
+                                if (value[0] == "R1" and value[1] == "R2") or (value[0] == "R2" and value[1] == "R1"):
+                                    print("Match!")
+                                else:
+                                    project_creation_fail = True
+                                    failed_list.append(key)
+                                    error_message = "Error! %s has two R1 or two R2 values" % key
+                                    messages.add_message(request, messages.ERROR, error_message)
+                            else:
+                                project_creation_fail = True
+                                failed_list.append(key)
+                                error_message = "Error! 2 Files must be associated with %s" % key
+                                messages.add_message(request, messages.ERROR, error_message)
+
+                if project_creation_fail:
+                    error_message = "Error! No paired match found for the Following:  " + ", ".join(failed_list) + \
+                                    ", Ensure each pair of files contains *_R1_001.fastq.gz and *_R2_001.fastq.gz"
+                    messages.add_message(request, messages.ERROR, error_message)
+                else:
+                    # Create a Fastq Project
+                    new_project = Project(user=username, description=description)  # organism=organism
+                    new_project.save()
+                    for obj in data_list:
+                        new_project.files.add(obj)
+                    new_project.num_files = len(data_list)
+                    new_project.type = request.POST.get('type')
+                    new_project.save()
+
+                    success_message = "The project, " + description + ", was created successfully."
+                    messages.add_message(request, messages.SUCCESS, success_message)
+
+                    # Send user to the Projects main page
+                    fastq_projects = Project.objects.filter(user=username, type='fastq')
+                    return render(request, 'SilentD/projects.html', {'fastq_projects': fastq_projects})
+
+    # Retrieve all uploaded files relating to the user
+    documents = Data.objects.filter(user=username).exclude(file__isnull=True).exclude(file="")
+    fastqs = Data.objects.filter(user=username, type='FastQ').exclude(file__isnull=True).exclude(file="")
+    # Convert file size to megabytes
+    for d in fastqs:
+        if d.file:
+            if os.path.isfile(d.file.name):
+                d.size = d.file.size / 1000 / 1000
+            else:
+                # For some reason the file has been deleted, update the databases to remove this entry
+                Data.objects.get(id=d.id).delete()
+        else:
+            d.size = 0
+    return render(request, 'SilentD/create_project.html', {'documents': documents, 'fastqs': fastqs})  # 'fastas': fastas
+
+
+@login_required
+def genesippr(request):
     username = ''
     if request.user.is_authenticated():
         username = request.user.username
 
     if request.POST:
+        table_dict = OrderedDict()
+        file_dict = OrderedDict()
         print(request.POST)
         # Send back the result file in a table, either ARG-ANNOT or ResFinder
-        if 'result' in request.POST:
-            path = request.POST['result']
+        if 'id' in request.POST:
             proj_id = request.POST['id']
-            # Retrieve all past jobs to send to page
             proj_obj = Project.objects.get(id=proj_id)
 
-            data_list = []
+            if 'result' in request.POST:
+                results_GDCS = get_resultdir(proj_obj, result_folder_names.folder_GDCS)
+                # get the path to the reports needed in the folders
+                with open(results_GDCS) as csvfile:
+                    reader = csv.DictReader(csvfile)
+                    for row in reader:
+                        strain = row['Strain']
+                        if Results.objects.filter(description=proj_obj.description, strain=strain).exists():
+                            # Results.objects.filter(user=username, description=proj_obj.description, strain=strain).delete()
+                            print('The results for: %s exist in database, no need to create again.' % strain)
+                        else:
+                            print('Creating database entries for the results of strain: %s' % strain)
+                            new_result = Results(user=username, description=proj_obj.description)
+                            new_result.save()
+                            new_result.strain = strain
+                            new_result.genus = row['Genus']
+                            new_result.matches = row['Matches']
+                            new_result.runtype = get_review_result(new_result.genus, new_result.matches)
+                            new_result.project_id = proj_id
+                            new_result.save()
+                            # print("Strain :", new_result.strain, "  Genus: ", new_result.genus,
+                            #       "  Matches: ", new_result.matches)
+                all_projects = Project.objects.filter(user=username)
+                results_dict = Results.objects.filter(user=username, description=proj_obj.description)
+                return render(request, 'SilentD/genesippr.html',
+                              {'projects': all_projects, 'results': results_dict})
 
-            # Form data is the path to result file
+            if 'Strain' in request.POST:
+                results_genesippr = get_resultdir(proj_obj, result_folder_names.folder_genesippr)
+                strain = request.POST['Strain']
+                genus = request.POST['Genus']
 
-            if 'GeneSeekr' or "SRST2" in path:
-                json_dict = {}
-                with open("AMR_Data.json") as f:
-                    json_dict = json.loads(f.read())
-                if "GeneSeekr" in path:
-                    with open(proj_obj.geneseekr_results.name) as g:
-                        reader = csv.DictReader(g)
-                        result = {}
-                        for row in reader:
+                with open(results_genesippr) as csvfile:
+                    reader = csv.DictReader(csvfile)
+                    for row in reader:
+                        if strain in row['Strain']:
+                            file_dict['Strain'] = strain
+                            file_dict['Genus'] = genus
+
                             for key, value in row.items():
-                                result[str(key).lstrip()] = str(value).replace("%", "")
-                        result.pop("Strain")
-                elif "SRST2" in path:
-                    with open(proj_obj.srst2_results.name) as g:
-                        result = {}
-                        lines = g.readlines()
-                        lines.pop(0)
-                        for line in lines:
-                            line = line.split("\t")
-                            result[line[3]] = 100.0 - float(line[8])
-                display_dict = {}
-                if "Escherichia_coli" in proj_obj.reference:
-                    rarity_name = "ECOLI"
-                    organism = "Escherichia_coli"
-                elif "Listeria_monocytogenes" in proj_obj.reference:
-                    rarity_name = "LISTERIA"
-                    organism = "Listeria_monocytogenes"
-                elif "Salmonella_enterica" in proj_obj.reference:
-                    rarity_name = "SALMONELLA"
-                    organism = "Salmonella_enterica"
-                elif "Shigella_boydii" in proj_obj.reference:
-                    rarity_name = "SHIGELLA_B"
-                    organism = "Shigella_boydii"
-                elif "Shigella_sonnei" in proj_obj.reference:
-                    rarity_name = "SHIGELLA_S"
-                    organism = "Shigella_sonnei"
-                elif "Shigella_flexneri" in proj_obj.reference:
-                    rarity_name = "SHIGELLA_F"
-                    organism = "Shigella_flexneri"
-                elif "Shigella_dysenteriae" in proj_obj.reference:
-                    rarity_name = "SHIGELLA_D"
-                    organism = "Shigella_dysenteriae"
-                elif "Vibrio_parahaemolyticus" in proj_obj.reference:
-                    rarity_name = "VIBRIO"
-                    organism = "Vibrio_parahaemolyticus"
-                elif "Yersinia_enterocolitica" in proj_obj.reference:
-                    rarity_name = "YERSINIA"
-                    organism = "Yersinia_enterocolitica"
-                elif "Campylobacter_coli" in proj_obj.reference:
-                    rarity_name = "CAMPY_COLI"
-                    organism = "Campylobacter_coli"
-                elif "Campylobacter_jejuni" in proj_obj.reference:
-                    rarity_name = "CAMPY_JEJUNI"
-                    organism = "Campylobacter_jejuni"
-                else:
-                    rarity_name = "OTHER"
-                    organism = "N/A"
+                                if value:
+                                    if strain not in value and genus not in value:
+                                        table_dict[key] = value
 
-                for key, value in result.items():
-                    if rarity_name in json_dict[key]:
-                        rarity = json_dict[key][rarity_name]
-                    else:
-                        rarity = 0
-                    display_dict[key] = {"identity": value,
-                                         "class": json_dict[key]["class"],
-                                         "antibiotic": json_dict[key]["antibiotic"],
-                                         "rarity": rarity,
-                                         "annotation": json_dict[key]["annotation"]}
-
-                    classes = set()
-                    results_dict = {}
-                    for key, value in display_dict.items():
-                        classes.add(value["class"])
-                    for item in classes:
-                        results_dict[item] = {}
-                    for item in classes:
-                        for key, value in display_dict.items():
-                            if value["class"] == item:
-                                results_dict[item][key] = value
+                if not table_dict:
+                    print("No report was found for the following strain: ", strain, ".")
 
                 all_projects = Project.objects.filter(user=username)
-                caption = [proj_obj.description, organism]
-                return render(request, 'SilentD/amr.html', {'projects': all_projects,
-                                                            'results': results_dict,
-                                                            "caption": caption})
+                results_dict = Results.objects.filter(user=username, description=proj_obj.description)
+                print(table_dict)
+                return render(request, 'SilentD/genesippr.html', {'projects': all_projects, 'results': results_dict,
+                                                                  'genesippr': table_dict, 'info': file_dict})
 
     all_projects = Project.objects.filter(user=username)
-    return render(request, 'SilentD/amr.html', {'projects': all_projects})
+    return render(request, 'SilentD/genesippr.html', {'projects': all_projects})

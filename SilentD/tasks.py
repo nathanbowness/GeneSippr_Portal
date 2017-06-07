@@ -1,10 +1,9 @@
 # Python Library
 from __future__ import absolute_import
+from subprocess import Popen
 from celery import Celery
-from subprocess import call, check_output
 import shutil
 import os
-import glob
 # Django Model Imports
 from SilentD.models import Project
 
@@ -15,108 +14,123 @@ app = Celery('tasks',
              broker='amqp://guest:guest@localhost:5672//')
 
 
+def get_sequencedir(project_obj):
+    return 'documents/%s/%s/sequences' % (str(project_obj.date.date()), project_obj.description)
+
+
+def get_resultdir(project_obj, result_folder):
+    return 'documents/%s/%s/reports/%s' % (str(project_obj.date.date()), project_obj.description, result_folder)
+
+
+def fileexists(end_path):
+    if os.path.isfile(end_path):
+        return True
+
+    return False
+
+
+def create_dir(working_dir):
+    if not os.path.exists(working_dir):
+        os.makedirs(working_dir)
+
+
+def get_review_result(genus, matches):
+
+    # Split the matches term, where the first term is the number of genes matched and the second term
+    # is the total number of matches possible. Then assign a term for the review of results
+    sequenced_num = matches.split('/')
+    success = 'successful'
+    intermediate = 'intermediate'
+    not_success = 'unsuccessful'
+
+    if len(sequenced_num) > 1 & len(sequenced_num) < 3:
+        matched = int(sequenced_num[0])
+        total = int(sequenced_num[1])
+
+        if 'Escherichia' in genus:  # Escherichia has a total of 53 matches
+            if total - matched <= 1:  # if 52 or more good match
+                return success
+            elif total - matched <= 5:  # if 48 or more okay match
+                return intermediate
+            else:
+                return not_success
+        elif 'Listeria' in genus:  # Listeria has a total of 50 matches
+            if total - matched <= 1:  # if 49 or more good match
+                return success
+            elif total - matched <= 5:  # if 45 or more okay match
+                return intermediate
+            else:
+                return not_success
+        elif 'Salmonella' in genus:
+            if total - matched <= 1:  # if __ or more good match
+                return success
+            elif total - matched <= 5:  # if __ or more okay match
+                return intermediate
+            else:
+                return not_success
+    return "error"
+
+
+def delete_project(proj_id):
+    '''This method will delete fastq files from the project directory, this will save space within the docker 
+    containers. The reports and logs however were not deleted, permission issues make this difficult. 
+    So the logs will remain, they are small and cause no errors. 
+    Also useful to archive the information if that is needed later.'''
+    project_obj = Project.objects.get(id=proj_id)
+    print('Deleting project copies of the fastq files within the project: ', project_obj.description)
+    print('The removal helps reduce storage.')
+
+    project_dir = 'documents/%s/%s' % (str(project_obj.date.date()), project_obj.description)
+    shutil.rmtree(project_dir, ignore_errors=True)
+    print("Files deleted.")
+
+
 @app.task(bind=True)
-def amr_task(self, obj_id):
-    # Files are either uploaded as fasta or fastq. First step is copying over the files to working directory,
-    # then performing mash analysis to find closest reference and assigning that to database object. This is followed by
-    # running either GeneSeekR or SRST2, waiting for results then adding results to database and ending the task
-    print(self)
-    project_obj = Project.objects.get(id=obj_id)
+def genesippr_task(self, proj_id):
+    project_obj = Project.objects.get(id=proj_id)
     data_files = project_obj.files.all()
-
     for data in data_files:
+        # set the working directory to the day of the job, followed by the name of the project, then a sequences folder
+        working_dir = get_sequencedir(project_obj)
+        create_dir(working_dir)
         path = data.file.name.split('/')[-1]
-        working_dir = 'documents/AMR/%s/%s' % (project_obj.user, project_obj.id)
         end_path = os.path.join(working_dir, path)
-
-        print("Copying from %s to another %s" % (data.file.name, end_path))
-        if not os.path.exists(working_dir):
-            os.makedirs(working_dir)
-        shutil.copyfile(data.file.name, end_path)
-
-        print("Object type is: ", project_obj.type)
-        if project_obj.type == "fasta":
-            try:
-                project_obj.amr_results = "Running"
-                project_obj.save()
-                print("Test: ", os.path.dirname(__file__))
-                print('./mash', 'dist', data.file.name, "RefSeq.msh")
-                distances = check_output(['./mash', 'dist', data.file.name, "RefSeq.msh"]).splitlines()
-                distances_split = []
-                for line in distances:
-                    distances_split.append(line.decode("utf-8").split("\t"))
-                if len(distances_split) > 0:
-                    sorted_list = sorted(distances_split, key=lambda x: x[2])
-                    project_obj.reference = sorted_list[0][1]
-                    if "Escherichia_coli" in sorted_list[0][1]:
-                        project_obj.organism = "Escherichia"
-                    elif "Listeria" in sorted_list[0][1]:
-                        project_obj.organism = "Listeria"
-                    elif "Salmonella" in sorted_list[0][1]:
-                        project_obj.organism = "Salmonella"
-                    else: project_obj.organism = "Other"
-                    project_obj.save()
-
-                print(distances_split[0])
-                print(sorted_list[0])
-                print("Running GeneSeekR")
-
-                call(['GeneSeekr', '-o', working_dir, '-m', "NCBI_AMR.fasta", "-c", "98", working_dir])
-
-                # Save Results, Check file exists, if so, make sure it actually contains results
-                result_file = glob.glob(os.path.join(working_dir, '*.csv'))
-                if len(result_file) == 1:
-                    print("GeneSeekR File Detected")
-                    project_obj.geneseekr_results.name = result_file[0]
-                    project_obj.amr_results = "Success"
-                    project_obj.save()
-
-            except Exception as e:
-                print("Error, GeneSeekR failed!", e.__doc__, e.message)
-                project_obj.amr_results = "Error"
-
+        # check to see if the file already exists for some reason in the folder before copying (should never happen)
+        if fileexists(end_path):
+            print("File: ", end_path, " already found. No need to copy.")
         else:
             try:
-                distances = check_output(['./mash', 'dist', data_files[0].file.name, "RefSeq.msh"]).splitlines()
-                distances_split = []
-                for line in distances:
-                    distances_split.append(line.decode("utf-8").split("\t"))
-                if len(distances_split) > 0:
-                    sorted_list = sorted(distances_split, key=lambda x: x[2])
-                    project_obj.reference = sorted_list[0][1]
-                    if "Escherichia_coli" in sorted_list[0][1]:
-                        print("detected")
-                        project_obj.organism = "Escherichia"
-                    elif "Listeria" in sorted_list[0][1]:
-                        project_obj.organism = "Listeria"
-                    elif "Salmonella" in sorted_list[0][1]:
-                        project_obj.organism = "Salmonella"
-                    else:
-                        project_obj.organism = "Other"
-                    project_obj.save()
+                print("Copying from %s to %s" % (data.file.name, end_path))
+                shutil.copyfile(data.file.name, end_path)
+            # if somehow the user deleted the database files, they are told to restart the database
+            except FileNotFoundError:
+                print("Protected database files have been deleted by the user. Restart the database to continue.")
 
-                    print(distances_split[0])
-                    print(sorted_list[0])
-                    print("Running SRST2")
+    dockercontainertag = project_obj.id
+    genesippr_dir = 'GeneSippr/'
+    genesipprshell = 'run_genesippr.sh'
+    partialpath = os.path.join(str(project_obj.date.date()), project_obj.description)
+    execute_genesipper = os.path.join(genesippr_dir, genesipprshell)
+    p = Popen([execute_genesipper, str(partialpath), str(dockercontainertag)])
+    print("GeneSippr is creating reports for the project.")
+    p.communicate()  # wait until completed before resuming the code
 
-                    call(['srst2', '--input_pe', data_files[0].file.name, data_files[1].file.name, '--output', os.path.join(working_dir, str(project_obj.id)), '--gene_db', "NCBI_AMR_SRST2.fasta"])
+    # check that all files have been made by the docker container otherwise, update that it failed
+    results_16spath = get_resultdir(project_obj, result_folder_names.folder_16s)
+    results_GDCSpath = get_resultdir(project_obj, result_folder_names.folder_GDCS)
+    results_genesippr = get_resultdir(project_obj, result_folder_names.folder_genesippr)
 
-                    # Save Results, Check file exists, if so, make sure it actually contains results
-                    result_file = glob.glob(os.path.join(working_dir, '*fullgenes*.txt'))
-                    if len(result_file) == 1:
-                        print("SRST2 File Detected")
-                        project_obj.srst2_results.name = result_file[0]
-                        project_obj.amr_results = "Success"
-                        project_obj.save()
+    if fileexists(results_16spath) and fileexists(results_GDCSpath) and fileexists(results_genesippr):
+        project_obj.amr_results = "Done"
+        project_obj.save()
+        print("The GeneSippr task was successful")
+    else:
+        project_obj.amr_results = "Error"
+        project_obj.save()
+        print("An error occurred when running the GeneSippr task.")
 
-                    print("Removing Temporary Files")
-                    for root, dirs, files in os.walk(working_dir, topdown=False):
-                        for name in files:
-                            if 'fullgenes' in str(name):
-                                print("Not Going to Delete", name)
-                            else:
-                                os.remove(os.path.join(root, name))
 
-            except Exception as e:
-                print("Error, SRST2 failed!", e.__doc__, e.message)
-                project_obj.amr_results = "Error"
+class result_folder_names(object):
+    folder_16s = '16S.csv'
+    folder_GDCS = 'GDCS.csv'
+    folder_genesippr = 'genesippr.csv'
