@@ -43,9 +43,9 @@
 
     <br>
     <div class="panel panel-default" id="dragdrop">
-        <div class="panel-heading" style="text-align: center;">Drag and Drop Files Here</div>
+        <div class="panel-heading" style="text-align: center; font-size: 16px">Drag and Drop Files Here</div>
         <div class="panel-body" style="min-height: 100px; max-height: 100px; text-align: center; vertical-align: middle; color: #edece7">
-            <i class="fa fa-fw fa-cloud-upload fa-5x"></i>
+            <i class="fa fa-fw fa-cloud-upload fa-5x" style="color: #919191"></i>
         </div>
     </div>
 
@@ -83,17 +83,11 @@
     </div>
     <div class="alert alert-info">
         <h4>FastQ Upload</h4>
-            <p>Currently only paired end .fastq.gz files supported and must come in the naming format of Sample_R1_001.fastq.gz and Sample_R2_001.fastq.gz</p>
-            <p>After successful upload, files are available for view in AMR</p><br>
-        <h4>Fasta Upload</h4>
-            <p>You can upload assembled .fasta files of bacterial whole genomes</p>
-            <p>After successful upload, files are available for view in AMR</p>
+            <p>Currently only paired .fastq.gz files supported and must come in the naming format of Sample_R1_001.fastq.gz and Sample_R2_001.fastq.gz</p>
+            <p>After successful upload, a project may be created with selected files.</p><br>
     </div>
 
-        <form id="ProjectForm" action="{% url "create_project" %}" name='FastQForm' method="post" enctype="multipart/form-data" class="form-inline">
-        {% csrf_token %}
-        <input type="hidden" class="form-control" name="project" id="project">
-        <input type="hidden" class="form-control" name="ids" value="project.id">
+    <form id="ProjectForm" action="{% url "create_project" %}" name='FastQForm' enctype="multipart/form-data" class="form-inline">
     </form>
 
     <script>

@@ -1,6 +1,5 @@
 import csv
 import os
-import datetime
 # Django Related Imports
 from django.shortcuts import render
 from django.contrib.auth import authenticate, login, logout
@@ -11,10 +10,10 @@ from django.contrib import messages
 from .forms import UserForm
 # Database Models
 from .models import Data, Project, Profile, Results
-from django.utils import timezone
 from collections import defaultdict, OrderedDict
 # Celery Tasks
-from .tasks import genesippr_task, result_folder_names, get_resultdir, get_review_result, delete_project
+from .tasks import genesippr_task, result_folder_names
+from .tasks import get_resultdir, get_review_result, delete_project, move_files, delete_file
 
 
 # Create your views here.
@@ -124,14 +123,14 @@ def file_upload(request):
 
     if request.method == 'POST':
         print("User %s uploading %s " % (username, request.FILES))
-        # Create a new database entry for the file
         file_name = str(request.FILES['file'])
 
         if 'fastq.gz' in file_name:
             # creating a new Data element for the file to be saved in the database
+
             newdoc = Data(user=username, type='FastQ')
             newdoc.save()
-            newdoc.file = request.FILES['file']     # add the file to the newdoc
+            newdoc.file = request.FILES['file']
             newdoc.save()
             newdoc.name = newdoc.file.name.split('/')[-1]
             newdoc.save()
@@ -144,9 +143,11 @@ def file_upload(request):
 
 @login_required
 def projects(request):
-    # Project.objects.all().delete()
+
+    # Project.objects.all().delete()        While in development env, use to delete all data in databases
     # Data.objects.all().delete()
     # Results.objects.all().delete()
+
     username = ''
     if request.user.is_authenticated():
         username = request.user.username
@@ -154,30 +155,27 @@ def projects(request):
     if request.method == 'POST':
         print(request.POST)
 
-        if "job" in request.POST:
+        if "job" in request.POST:  # only executes if a job action is selected
+
             job = request.POST.get('job')
             proj_id = request.POST.get('project_id')
             pro_obj = Project.objects.get(id=proj_id)
 
-            if job == 'geneseekr_start':
-                print("Start the GeneSeekr job.")
-
-                pro_obj.amr_results = "Running"
+            if job == 'genesippr_start':
+                print("Started the GeneSippr job.")
+                pro_obj.genesippr_results = "Running"
                 pro_obj.save()
-                genesippr_task.delay(pro_obj.id)
-                print("Finished the GeneSeekr job.")
+                genesippr_task.delay(pro_obj.id)  # run a genesippr job, by putting the task through celery with delay()
 
-        elif "amr_results" in request.POST:
+        elif "genesippr_results" in request.POST:
             # currently loads all projects from the user into view
-            # later this could potentially trigger th results pane actually opening
             all_projects = Project.objects.filter(user=username)
             print(all_projects)
             print("print done")
             return render(request, 'SilentD/genesippr.html', {'projects': all_projects})
 
         elif "delete" in request.POST:
-            proj_id = request.POST['id']  # 'delete' works as well
-            print(proj_id)
+            proj_id = request.POST['id']
             delete_project(proj_id)
             pro_obj = Project.objects.get(id=proj_id)
             delete_project(proj_id)
@@ -198,42 +196,19 @@ def create_project(request):
 
     if request.method == 'POST':
         print(request.POST)
-        if 'project' in request.POST:
-            ids = request.POST.get("ids")
-            print(ids)
-            name_list = str(ids)
-            print(name_list)
-            project_files_fastq = []
-            now = timezone.now()
-            delta = datetime.timedelta(hours=2)
-            recent_files = Data.objects.filter(user=username).order_by('-date')
-            for file in recent_files:
-                if (now - file.date) < delta:
-                    if file.name in name_list:
-                        print(file.type)
-                        if file.type == "Fastq":
-                            project_files_fastq.append(file)
-                    print("A Recent file was uploaded to the project at:", file.date)
-                else:
-                    print("A Non-recent file was uploaded to the project at:", file.date)
-
-            if len(project_files_fastq) > 1:
-                new_project = Project(user=username, description=now)
-                new_project.save()
-                for obj in project_files_fastq:
-                    new_project.files.add(obj)
-                new_project.num_files = len(project_files_fastq)
-                new_project.type = "fastq"
-                new_project.save()
-
-        else:
+        if 'name' in request.POST:
             description = request.POST.get('name')
-            if request.POST.get('ids'):
+            if request.POST.get('id'):
                 # FastQ
-                data_file_list = request.POST.get('ids')
+                data_file_list = request.POST.get('id')
             else:
-                print("Files uploaded did not contain fastq files") # ......Neeed better solution to have files show up
-                return render(request, 'SilentD/create_project.html', {})
+                # incase no id is uploaded (not in database) ask the user to reupload the files
+                error_message = "Error! Files uploaded did not exist in the database. " \
+                                "Please try to reupload the files again, and delete the old ones."
+                messages.add_message(request, messages.ERROR, error_message)
+
+                fastq_projects = Project.objects.filter(user=username, type='fastq')
+                return render(request, 'SilentD/projects.html', {'fastq_projects': fastq_projects})
 
             project_type = request.POST.get('type')
 
@@ -297,7 +272,7 @@ def create_project(request):
                     messages.add_message(request, messages.ERROR, error_message)
                 else:
                     # Create a Fastq Project
-                    new_project = Project(user=username, description=description)  # organism=organism
+                    new_project = Project(user=username, description=description)
                     new_project.save()
                     for obj in data_list:
                         new_project.files.add(obj)
@@ -305,15 +280,21 @@ def create_project(request):
                     new_project.type = request.POST.get('type')
                     new_project.save()
 
+                    print("Moving files to the project directory./n")
+                    move_files(new_project.id)
                     success_message = "The project, " + description + ", was created successfully."
                     messages.add_message(request, messages.SUCCESS, success_message)
 
-                    # Send user to the Projects main page
-                    fastq_projects = Project.objects.filter(user=username, type='fastq')
-                    return render(request, 'SilentD/projects.html', {'fastq_projects': fastq_projects})
+            # Send user to the Projects main page
+            fastq_projects = Project.objects.filter(user=username, type='fastq')
+            return render(request, 'SilentD/projects.html', {'fastq_projects': fastq_projects})
+
+        else:
+            file_id = request.POST.get('id')
+            delete_file(file_id)
+            Data.objects.get(id=file_id).delete()
 
     # Retrieve all uploaded files relating to the user
-    documents = Data.objects.filter(user=username).exclude(file__isnull=True).exclude(file="")
     fastqs = Data.objects.filter(user=username, type='FastQ').exclude(file__isnull=True).exclude(file="")
     # Convert file size to megabytes
     for d in fastqs:
@@ -325,7 +306,7 @@ def create_project(request):
                 Data.objects.get(id=d.id).delete()
         else:
             d.size = 0
-    return render(request, 'SilentD/create_project.html', {'documents': documents, 'fastqs': fastqs})  # 'fastas': fastas
+    return render(request, 'SilentD/create_project.html', {'fastqs': fastqs})
 
 
 @login_required
@@ -343,15 +324,19 @@ def genesippr(request):
             proj_id = request.POST['id']
             proj_obj = Project.objects.get(id=proj_id)
 
-            if 'result' in request.POST:
+            if 'result' in request.POST:  # only executes if the results button was selected
+
                 results_GDCS = get_resultdir(proj_obj, result_folder_names.folder_GDCS)
+
                 # get the path to the reports needed in the folders
                 with open(results_GDCS) as csvfile:
                     reader = csv.DictReader(csvfile)
                     for row in reader:
+                        # Check if entry exists in the database already, if not create new results for the strain
+                        # The basic results are populated only from the GDCS file, if an entry is not in there
+                        # it will not be displayed
                         strain = row['Strain']
                         if Results.objects.filter(description=proj_obj.description, strain=strain).exists():
-                            # Results.objects.filter(user=username, description=proj_obj.description, strain=strain).delete()
                             print('The results for: %s exist in database, no need to create again.' % strain)
                         else:
                             print('Creating database entries for the results of strain: %s' % strain)
@@ -363,20 +348,22 @@ def genesippr(request):
                             new_result.runtype = get_review_result(new_result.genus, new_result.matches)
                             new_result.project_id = proj_id
                             new_result.save()
-                            # print("Strain :", new_result.strain, "  Genus: ", new_result.genus,
-                            #       "  Matches: ", new_result.matches)
+
                 all_projects = Project.objects.filter(user=username)
                 results_dict = Results.objects.filter(user=username, description=proj_obj.description)
                 return render(request, 'SilentD/genesippr.html',
-                              {'projects': all_projects, 'results': results_dict})
+                              {'projects': all_projects, 'current_project': proj_obj, 'results': results_dict})
 
-            if 'Strain' in request.POST:
+            if 'Strain' in request.POST:  # only executes if the more details button is selected
+
                 results_genesippr = get_resultdir(proj_obj, result_folder_names.folder_genesippr)
                 strain = request.POST['Strain']
                 genus = request.POST['Genus']
 
                 with open(results_genesippr) as csvfile:
                     reader = csv.DictReader(csvfile)
+
+                    # ensures to match the Strain and Genus in proper order from the table, then gets the genes after
                     for row in reader:
                         if strain in row['Strain']:
                             file_dict['Strain'] = strain
@@ -387,13 +374,13 @@ def genesippr(request):
                                     if strain not in value and genus not in value:
                                         table_dict[key] = value
 
-                if not table_dict:
+                if not table_dict:  # check to see if report was found, will display no further info if not found
                     print("No report was found for the following strain: ", strain, ".")
 
                 all_projects = Project.objects.filter(user=username)
                 results_dict = Results.objects.filter(user=username, description=proj_obj.description)
-                print(table_dict)
                 return render(request, 'SilentD/genesippr.html', {'projects': all_projects, 'results': results_dict,
+                                                                  'current_project': proj_obj,
                                                                   'genesippr': table_dict, 'info': file_dict})
 
     all_projects = Project.objects.filter(user=username)

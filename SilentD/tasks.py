@@ -5,7 +5,7 @@ from celery import Celery
 import shutil
 import os
 # Django Model Imports
-from SilentD.models import Project
+from SilentD.models import Project, Data
 
 
 # General Settings
@@ -15,14 +15,20 @@ app = Celery('tasks',
 
 
 def get_sequencedir(project_obj):
-    return 'documents/%s/%s/sequences' % (str(project_obj.date.date()), project_obj.description)
+    """The directory for the sequences folder is created from the day of the job, followed by the name of the project"""
+    description = project_obj.description.replace(' ', '')  # remove any spaces in the project name
+    return 'documents/%s/%s/sequences' % (str(project_obj.date.date()), description)
 
 
 def get_resultdir(project_obj, result_folder):
-    return 'documents/%s/%s/reports/%s' % (str(project_obj.date.date()), project_obj.description, result_folder)
+    """The directory for the reports folder is created from the day of the job, followed by the name of the project, 
+    a reports folder and then the report name"""
+    description = project_obj.description.replace(' ', '')  # remove any spaces in the project name
+    return 'documents/%s/%s/reports/%s' % (str(project_obj.date.date()), description, result_folder)
 
 
-def fileexists(end_path):
+def file_exists(end_path):
+    """Check to see if the file already exists in the place specified"""
     if os.path.isfile(end_path):
         return True
 
@@ -30,11 +36,13 @@ def fileexists(end_path):
 
 
 def create_dir(working_dir):
+    """Create the directory for the given path if it does not already exist."""
     if not os.path.exists(working_dir):
         os.makedirs(working_dir)
 
 
 def get_review_result(genus, matches):
+    """Return a review of the results keyword based on the inputted genus and number of matches for that genus."""
 
     # Split the matches term, where the first term is the number of genes matched and the second term
     # is the total number of matches possible. Then assign a term for the review of results
@@ -48,55 +56,66 @@ def get_review_result(genus, matches):
         total = int(sequenced_num[1])
 
         if 'Escherichia' in genus:  # Escherichia has a total of 53 matches
-            if total - matched <= 1:  # if 52 or more good match
+            if total - matched <= 1:
                 return success
-            elif total - matched <= 5:  # if 48 or more okay match
+            elif total - matched <= 5:
                 return intermediate
             else:
                 return not_success
         elif 'Listeria' in genus:  # Listeria has a total of 50 matches
-            if total - matched <= 1:  # if 49 or more good match
+            if total - matched <= 1:
                 return success
-            elif total - matched <= 5:  # if 45 or more okay match
+            elif total - matched <= 5:
                 return intermediate
             else:
                 return not_success
-        elif 'Salmonella' in genus:
-            if total - matched <= 1:  # if __ or more good match
+        elif 'Salmonella' in genus:  # Salmonella has a total of 50 matches
+            if total - matched <= 1:
                 return success
-            elif total - matched <= 5:  # if __ or more okay match
+            elif total - matched <= 5:
                 return intermediate
             else:
                 return not_success
     return "error"
 
 
-def delete_project(proj_id):
-    '''This method will delete fastq files from the project directory, this will save space within the docker 
-    containers. The reports and logs however were not deleted, permission issues make this difficult. 
-    So the logs will remain, they are small and cause no errors. 
-    Also useful to archive the information if that is needed later.'''
-    project_obj = Project.objects.get(id=proj_id)
-    print('Deleting project copies of the fastq files within the project: ', project_obj.description)
-    print('The removal helps reduce storage.')
+def delete_file(file_id):
+    """Delete the location of the temp file from the documcents folder. This will save space when files are 
+    no longer needed by the user."""
+    file_obj = Data.objects.get(id=file_id)
+    print("Removing file: ", file_obj.name)
+    print(file_obj.file.path)
+    file_dir = file_obj.file.path
+    os.remove(file_dir)
+    print("Done.")
 
-    project_dir = 'documents/%s/%s' % (str(project_obj.date.date()), project_obj.description)
+
+def delete_project(proj_id):
+    """This method will delete fastq files from the project directory, which will save space.
+    The reports and logs however are not deleted, permission issues make this difficult. 
+    So the logs will remain, they are small and cause no errors. 
+    Also useful to archive the information if that is needed later."""
+    project_obj = Project.objects.get(id=proj_id)
+    print('Deleting project the fastq files within the project: ', project_obj.description)
+
+    description = project_obj.description.replace(' ', '')  # remove any space in the project name
+    project_dir = 'documents/%s/%s' % (str(project_obj.date.date()), description)
     shutil.rmtree(project_dir, ignore_errors=True)
     print("Files deleted.")
 
 
-@app.task(bind=True)
-def genesippr_task(self, proj_id):
+def move_files(proj_id):
+    """Move files from their temporary directory into the project directory."""
     project_obj = Project.objects.get(id=proj_id)
     data_files = project_obj.files.all()
+
     for data in data_files:
-        # set the working directory to the day of the job, followed by the name of the project, then a sequences folder
         working_dir = get_sequencedir(project_obj)
         create_dir(working_dir)
         path = data.file.name.split('/')[-1]
         end_path = os.path.join(working_dir, path)
-        # check to see if the file already exists for some reason in the folder before copying (should never happen)
-        if fileexists(end_path):
+
+        if file_exists(end_path):
             print("File: ", end_path, " already found. No need to copy.")
         else:
             try:
@@ -106,31 +125,42 @@ def genesippr_task(self, proj_id):
             except FileNotFoundError:
                 print("Protected database files have been deleted by the user. Restart the database to continue.")
 
-    dockercontainertag = project_obj.id
-    genesippr_dir = 'GeneSippr/'
-    genesipprshell = 'run_genesippr.sh'
-    partialpath = os.path.join(str(project_obj.date.date()), project_obj.description)
-    execute_genesipper = os.path.join(genesippr_dir, genesipprshell)
-    p = Popen([execute_genesipper, str(partialpath), str(dockercontainertag)])
-    print("GeneSippr is creating reports for the project.")
-    p.communicate()  # wait until completed before resuming the code
 
-    # check that all files have been made by the docker container otherwise, update that it failed
+@app.task(bind=True)
+def genesippr_task(self, proj_id):
+    """Run the docker genesippr task on the fastq files of the selected project. Output a message on success or 
+    failure."""
+
+    project_obj = Project.objects.get(id=proj_id)
+    basepath = os.path.dirname(__file__).replace('/SilentD', '')
+
+    description = project_obj.description.replace(' ', '')  # remove any spaces in the project name
+    partialpath = os.path.join(str(project_obj.date.date()), description)
+    execute_genesipper = 'GeneSippr/run_genesippr.sh'
+
+    # run the GeneSippr docker container from an outside script
+    p = Popen([execute_genesipper, basepath, partialpath, str(project_obj.id)])
+    print("GeneSippr is creating reports for the project.")
+    p.communicate()  # wait until the script completes before resuming the code
+
+    # path for all reports created from the docker run, check to ensure they are all present
     results_16spath = get_resultdir(project_obj, result_folder_names.folder_16s)
     results_GDCSpath = get_resultdir(project_obj, result_folder_names.folder_GDCS)
     results_genesippr = get_resultdir(project_obj, result_folder_names.folder_genesippr)
 
-    if fileexists(results_16spath) and fileexists(results_GDCSpath) and fileexists(results_genesippr):
-        project_obj.amr_results = "Done"
+    if file_exists(results_16spath) and file_exists(results_GDCSpath) and file_exists(results_genesippr):
+        project_obj.genesippr_results = "Done"
         project_obj.save()
         print("The GeneSippr task was successful")
     else:
-        project_obj.amr_results = "Error"
+        project_obj.genesippr_results = "Error"
         project_obj.save()
         print("An error occurred when running the GeneSippr task.")
 
 
 class result_folder_names(object):
+    """Class containing the folder names of a genesippr run."""
+
     folder_16s = '16S.csv'
     folder_GDCS = 'GDCS.csv'
     folder_genesippr = 'genesippr.csv'
