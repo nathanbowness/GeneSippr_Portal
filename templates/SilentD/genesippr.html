@@ -114,12 +114,7 @@
                         </div>
                         <div id="collapseThree" class="panel-collapse collapse">
                             <div class="panel-body">
-                                Antimicrobial Resistance Detector determines the presence of resistance marker genes in bacterial genomes<br>
-                                <a href="http://www.ncbi.nlm.nih.gov/books/NBK279690/">BLAST+</a> (NCBI) or
-                                <a href="https://github.com/katholt/srst2">SRST2 (Holt Lab)</a> is used in conjunction with
-                                the <a href="https://www.ncbi.nlm.nih.gov/bioproject/313047">Bacterial Antimicrobial Resistance Reference Gene Database (NCBI)</a>
-                                Prevalence information is calculated based on hits amongst a species. Currently prevalence scales support E.Coli, Salmonella, Listeria, Vibrio, Staph and Campylobactor.
-                                If the organism doesn't correspond to these 6 bacteria, then a standard output of detected genes will be generated<br><br>
+                                GeneSippr .............
                           </div>
                         </div>
                     </div>
@@ -137,7 +132,7 @@
                             </div>
                             <div id="collapseSymbols" class="panel-collapse collapse">
                                 <div class="panel-body">
-                                    <h5 style="text-decoration: underline; font-size: 16px; padding-bottom: 8px">
+                                    <h5 style="text-decoration: underline; font-size: 14px; padding-bottom: 8px">
                                         Previous Jobs Tab
                                     </h5>
                                     <li>
@@ -146,11 +141,11 @@
                                             <span style="font-weight: bold;">
                                                 &nbsp&nbsp&nbsp&nbsp Download:
                                             </span>
-                                             This will download a copy of the html to your local computer.
+                                             This will allow the user to download a copy of the html to your local computer.
                                         </td>
                                     </li>
                                     <br>
-                                    <h5 style="text-decoration: underline; font-size: 16px; padding-bottom: 8px;">
+                                    <h5 style="text-decoration: underline; font-size: 14px; padding-bottom: 8px;">
                                         Results Tab
                                     </h5>
                                     <li>
@@ -160,7 +155,8 @@
                                         <span style="font-weight: bold;">
                                                 &nbsp&nbsp&nbsp&nbsp Successful Run:
                                         </span>
-                                        &nbsp&nbsp&nbsp&nbsp successful run is defined as.........
+                                        &nbsp is when the total number of matches are off by 1 or
+                                            less than the total number of possible matches.
                                     </li>
                                     <br>
                                     <li>
@@ -170,7 +166,8 @@
                                         <span style="font-weight: bold;">
                                                 &nbsp&nbsp&nbsp&nbsp Intermediate Run:
                                         </span>
-                                        &nbsp&nbsp&nbsp&nbsp a run where.........
+                                        &nbsp is when the total number of matches are off by more than 1
+                                            but less than or equal to 5 when compared to the total number of possible matches.
                                     </li>
                                     <br>
                                     <li>
@@ -180,7 +177,8 @@
                                         <span style="font-weight: bold;">
                                                 &nbsp&nbsp&nbsp&nbsp Unsuccessful Run:
                                         </span>
-                                        &nbsp&nbsp&nbsp&nbsp  unsuccessful run is defined as.........
+                                        &nbsp is when the total number of matches are off by more than 5
+                                            when compared to the total number of possible matches.
                                     </li>
                                     <br>
                                     <li>
@@ -190,7 +188,7 @@
                                         <span style="font-weight: bold;">
                                                 &nbsp&nbsp&nbsp&nbsp Error:
                                         </span>
-                                        &nbsp&nbsp&nbsp&nbsp A problem occured during the run.
+                                        &nbsp A problem occured during the run, results may be unreliable.
                                     </li>
                               </div>
                             </div>
@@ -241,11 +239,11 @@
                                                 <td>{{ project.description  }}</td>
                                                 <td>{{ project.num_files }}</td>
                                                 <td>
-                                                    {% if project.amr_results == "Running" %}
+                                                    {% if project.genesippr_results == "Running" %}
                                                         <button disabled type="submit" id="submit" class="btn btn-info btn-xs loading custombutton">Running</button>
-                                                    {% elif project.amr_results == "Error" %}
+                                                    {% elif project.genesippr_results == "Error" %}
                                                         <button disabled type="submit" id="submit" class="btn btn-danger btn-xs custombutton">Error</button>
-                                                    {% elif project.amr_results == "Done" %}
+                                                    {% elif project.genesippr_results == "Done" %}
                                                             <div>
                                                                 <table>
                                                                     <tr>
@@ -273,8 +271,11 @@
                             {% if results %}
                             <br>
                             <div class="tab-pane fade in active" id=2>
+                                {% if current_project %}
+                                    <h2 style="font-size: 26px; text-align: center">Results for Project: <strong>{{ current_project.description }}</strong></h2>
+                                {% endif %}
                                 <table id="T2" class="table table-striped table-condensed">
-                                    <caption style="font-size: 18px;">Summary of the Genesippr run on the project.<br>....Anything else to say..... Need to include results that aren't in GDCS</caption>
+                                    <caption style="font-size: 16px;">Base information from the GeneSippr task.<br></caption>
                                     <thead>
                                     <tr>
                                         <th>Strain</th>
@@ -337,9 +338,10 @@
                                 {% if genesippr %}
                                 <br>
                                 <br>
+                                    <h3 style="font-size: 24px; text-decoration: underline;">More Details</h3>
                                 <br>
                                     <table id="T3" class="table table-striped table-condensed">
-                                        <caption style="font-size: 18px;">Summary from the genesippr report.<br>Should add a search bar as well incase</caption>
+                                        <caption style="font-size: 18px;">More information from the genesippr report.<br></caption>
                                         <thead>
                                             <tr>
                                                 <td>Strain</td>

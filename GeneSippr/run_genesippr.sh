@@ -1,6 +1,7 @@
 #!/bin/sh
-folderpath=$1
-containernumber=$2
+basepath=$1
+folderpath=$2
+containernumber=$3
 if [ "$(docker ps -q -f name=genesipprcontainer$containernumber)" ]
 then
 	#kill and delete old container
@@ -20,7 +21,7 @@ fi
 wait
 
 #must be run without the "-it" as this will give an error on execute with "-i" for an interactive display
-docker run -i -v /home/bownessn/Documents/GeneSippr_Portal:/home/bownessn/Documents/GeneSippr_Portal --name genesipprcontainer$containernumber genesippr method.py /home/bownessn/Documents/GeneSippr_Portal/documents/$folderpath -s /home/bownessn/Documents/GeneSippr_Portal/documents/$folderpath/sequences -t /home/bownessn/Documents/GeneSippr_Portal/GeneSippr/targets
+docker run -i -v $basepath:$basepath --name genesipprcontainer$containernumber genesippr method.py /home/bownessn/Documents/GeneSippr_Portal/documents/$folderpath -s $basepath/documents/$folderpath/sequences -t $basepath/GeneSippr/targets
 
 wait
 

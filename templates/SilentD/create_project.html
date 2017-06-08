@@ -88,7 +88,9 @@
             <div class="alert alert-info">
                 <h4>Project Creation Guide</h4>
                 <p><strong>FastQ:</strong> Select FastQ files you have previously uploaded from the list below. Only paired end files
-                    are supported. A pair of files must follow the Illumina naming scheme of sample_R1_001.fastq.gz and sample_R2_001.fastq.gz.<br>
+                    are supported. A pair of files must follow the Illumina naming scheme of sample_R1_001.fastq.gz and sample_R2_001.fastq.gz.<br><br>
+                <strong style="font-size: 15px">Warning:</strong>
+                <li>Make sure not to upload the same set of files to a project more than once.</li>
             </div>
         {% endif %}
         <div class="row">
@@ -118,7 +120,7 @@
                                         </select>
                                         <span class="input-group-addon danger"><span class="glyphicon glyphicon-remove"></span></span>
                                     </div>
-                                    <input type="hidden" class="form-control" name="ids" id="ids">
+                                    <input type="hidden" class="form-control" name="id" id="id">
                                     <input type="hidden" class="form-control" name="type" value="fastq">
                                 </form>
                                 <hr>
@@ -153,7 +155,6 @@
 
                                     </tbody>
                                 </table>
-
                                 <button type="button" id="click" class="btn btn-primary">Create Project</button>
                         </div>
                     </div>
@@ -168,7 +169,7 @@
                 var table = $('#fastqs').DataTable( {"order": [[ 1, "desc" ]]} );
 
                 // When the button is clicked, all the table checkboxes get turned into a string and become the
-                // value of the hidden ids form input. Then the form is submitted to the server
+                // value of the hidden id form input. Then the form is submitted to the server
                 $('#click').click( function() {
                     var data = table.$('input, select').serialize();
                     var count = (data.match(/&/g)||[]).length;
@@ -186,11 +187,11 @@
                         } else if (count > 64) {
                             alert("Error: Cannot create a project greater than 32 Samples (64 Files)");
                         } else {
-                            $('#ids').val(data);
+                            $('#id').val(data);
                             document.getElementById("FastQForm").submit();
                         }
                     } else {
-                        $('#ids').val(data);
+                        $('#id').val(data);
                         document.getElementById("FastQForm").submit();
                     }
                 } );

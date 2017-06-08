@@ -58,7 +58,6 @@
                                     <tr>
                                         <th>Name</th>
                                         <th>Date</th>
-{#                                        <th>Organism</th>#}
                                         <th>Num. of Files</th>
                                         <th>File Names</th>
                                         <th>Jobs</th>
@@ -83,24 +82,23 @@
                                                         <input type="hidden" name="project_id" value="{{ project.id }}">
                                                         <select title='Analysis' onchange="this.form.submit()" id="job" name="job" class="form-control">
                                                             <option disabled selected value="Run">Select Job&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</option>
-                                                            <!--<option disabled value="spades_start">SPAdes Assembly</option>-->
-                                                            <option value="geneseekr_start">GeneSeekr</option>
+                                                            <option value="genesippr_start">GeneSippr</option>
                                                         </select>
                                                     </form>
                                                 </td>
                                                 <td> <!-- Here Lies All The Buttons Responsible for Background Tasks -->
                                                     <table>
-                                                        {% if project.amr_results %}
+                                                        {% if project.genesippr_results %}
                                                             <form role="form" action="{% url "projects" %}" method="post">
                                                                 {% csrf_token %}
-                                                                {% if project.amr_results == 'Running' %}
+                                                                {% if project.genesippr_results == 'Running' %}
                                                                     <input type="hidden" name="amr_running" value="{{ project.id }}">
                                                                     <button type="button" id="amr" class="btn btn-xs btn-info custombutton loading" disabled>GeneSippr</button>
-                                                                {% elif project.amr_results == 'Done' %}
-                                                                    <input type="hidden" name="amr_results" value="{{ project.id }}">
+                                                                {% elif project.genesippr_results == 'Done' %}
+                                                                    <input type="hidden" name="genesippr_results" value="{{ project.id }}">
                                                                     <button type="submit" id="amr" class="btn btn-xs btn-success custombutton">GeneSippr</button>
-                                                                {% elif project.amr_results == 'Error'  %}
-                                                                    <input type="hidden" name="amr_results" value="{{ project.id }}">
+                                                                {% elif project.genesippr_results == 'Error'  %}
+                                                                    <input type="hidden" name="genesippr_results" value="{{ project.id }}">
                                                                     <button type="submit" id="amr" class="btn btn-xs btn-danger custombutton">GeneSippr</button>
                                                                 {% else %}
                                                                 {% endif %}
@@ -111,7 +109,6 @@
                                                 </td>
                                                 <td>
                                                     <form style='float: right;' role="form" action="{% url "projects" %}" method="post">
-                                                        &nbsp;
                                                         {% csrf_token %}
                                                         <input type="hidden" name="id" value="{{ project.id }}">
                                                         <input type="hidden" name="delete" value="{{ project.id }}">

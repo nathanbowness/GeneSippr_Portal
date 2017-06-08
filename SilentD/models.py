@@ -104,7 +104,7 @@ class Project(Base):
     organism = models.CharField(max_length=200, blank=True)
     reference = models.CharField(max_length=200, blank=True)
     type = models.CharField(max_length=20, blank=True)
-    amr_results = models.CharField(max_length=50, blank=True)
+    genesippr_results = models.CharField(max_length=50, blank=True)
 
 
 class Results(Base):
