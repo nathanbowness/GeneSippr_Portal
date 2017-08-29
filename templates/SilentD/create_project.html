@@ -8,7 +8,6 @@
     <link href="{% static 'css/select2.css'%}" rel="stylesheet">
     <link href="{% static 'css/styles.css'%}" rel="stylesheet">
 
-
     <script src="{% static 'js/jquery.dataTables.min.js' %}"></script>
     <script src="{% static 'js/dataTables.bootstrap.js' %}"></script>
     <script src="{% static 'js/dataTables.colVis.js' %}"></script>
@@ -16,9 +15,10 @@
     <script src="{% static 'js/select2.js' %}"></script>
 
     <style>
-        #scrollable-dropdown-menu .tt-dropdown-menu {
-            max-height: 150px;
-            overflow-y: auto;
+        #selectAll, #deselectAll{
+            float: right;
+            padding: 2px 10px;
+            display: block;
         }
     </style>
     <section class="content-header">
@@ -88,7 +88,10 @@
             <div class="alert alert-info">
                 <h4>Project Creation Guide</h4>
                 <p><strong>FastQ:</strong> Select FastQ files you have previously uploaded from the list below. Only paired end files
-                    are supported. A pair of files must follow the Illumina naming scheme of sample_R1_001.fastq.gz and sample_R2_001.fastq.gz.<br><br>
+                    are supported. A pair of files must follow the Illumina naming scheme of sample_R1_001.fastq.gz and sample_R2_001.fastq.gz.<br>
+                    <strong>Select All:</strong> All files currently displayed on the page will be added to the project being  created. Files on other pages will not.<br>
+                    <strong>Deselect All:</strong> All files currently displayed on the page will be removed from the project being created.
+                    <br><br>
                 <strong style="font-size: 15px">Warning:</strong>
                 <li>Make sure not to upload the same set of files to a project more than once.</li>
             </div>
@@ -146,7 +149,7 @@
                                             <td>{{ document.type }}</td>
                                             <td>{{ document.size }}</td>
                                             <td>
-                                                <input title='checkbox' id='{{ document.file.name }}' name='id' value="{{ document.id }}" type="checkbox" onclick="activateButton()">
+                                                <input class='checkbox' id='{{ document.file.name }}' name='id' value="{{ document.id }}" type="checkbox" onclick="activateButton()">
                                             </td>
                                         {% endfor %}
                                     {% else %}
@@ -155,7 +158,11 @@
 
                                     </tbody>
                                 </table>
+                                <br>
+                                <button type="button" class="btn btn-primary checkbox" id="selectAll">Select All</button>
                                 <button type="button" id="click" class="btn btn-primary">Create Project</button>
+                                <button type="button" class="btn btn-primary checkbox" id="deselectAll">Deselect All</button>
+
                         </div>
                     </div>
                 </div><!-- /.box-body -->
@@ -163,16 +170,16 @@
         </div><!-- /.col -->
 
         <script type="text/javascript">
-            jQuery(document).ready(function($) {
+            $(document).ready(function() {
 
                 // FastQ File Table Initialization
-                var table = $('#fastqs').DataTable( {"order": [[ 1, "desc" ]]} );
+                var table = $('#fastqs').DataTable({"order": [[1, "desc"]]});
 
                 // When the button is clicked, all the table checkboxes get turned into a string and become the
                 // value of the hidden id form input. Then the form is submitted to the server
-                $('#click').click( function() {
+                $('#click').click(function () {
                     var data = table.$('input, select').serialize();
-                    var count = (data.match(/&/g)||[]).length;
+                    var count = (data.match(/&/g) || []).length;
 
                     //Check for Paired or Single Reads
                     var e = document.getElementById("reads");
@@ -180,9 +187,9 @@
 
                     if (read_type == 'Paired') {
                         // Ensure multiples of 2 files by checking for 1 '&' per two files
-                        if (count == 0){
+                        if (count == 0) {
                             alert("No files have been selected. Please select a pair of files corresponding to the format given at the top of the page to continue. ")
-                        } else if (count%2 == 0) {
+                        } else if (count % 2 == 0) {
                             alert("Error: 1 or more files is not paired");
                         } else if (count > 64) {
                             alert("Error: Cannot create a project greater than 32 Samples (64 Files)");
@@ -197,9 +204,36 @@
                 } );
 
             } );
+
+            $(document).ready(function() {
+                $("#selectAll").click(function () {  //"select all" change
+                    var status = true;
+                    $('.checkbox').each(function () { //iterate all listed checkbox items
+                        this.checked = status; //change ".checkbox" checked status
+                        activateButton()
+                    });
+                    $('.checkbox').each(function (){
+                        location.reload();
+                    });
+                });
+            });
+
+            $(document).ready(function() {
+                $("#deselectAll").click(function () {  //"deselect all" change
+                    var status = false;
+                    $('.checkbox').each(function () { //iterate all listed checkbox items
+                        this.checked = status; //change ".checkbox" checked status
+                    });
+                    $('.checkbox').each(function (){ //update each checkbox to the new value
+                        location.reload();
+                    });
+                });
+            });
+
             function activateButton() {
                 $('#click').prop('disabled', false);
             }
+
             $(document).ready(function() {
                 $('select').select2();
             });

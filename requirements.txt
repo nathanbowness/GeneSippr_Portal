@@ -1,13 +1,12 @@
-amqp==2.1.4
+amqp==1.4.9
 anyjson==0.3.3
+Babel==2.4.0
 billiard==3.3.0.23
-biopython==1.69
 celery==3.1.23
 Django==1.11.1
 django-celery==3.2.1
 django-grappelli==2.9.1
-kombu==3.0.35
+kombu==3.0.37
 psycopg2==2.7.1
 pytz==2017.2
-requests==2.9.1
-wheel==0.24.0
+
