@@ -125,7 +125,7 @@ def file_upload(request):
         print("User %s uploading %s " % (username, request.FILES))
         file_name = str(request.FILES['file'])
 
-        if 'fastq.gz' in file_name:
+        if 'fastq.gz' or 'fastq' in file_name:
             # creating a new Data element for the file to be saved in the database
 
             newdoc = Data(user=username, type='FastQ')
@@ -300,7 +300,8 @@ def create_project(request):
     for d in fastqs:
         if d.file:
             if os.path.isfile(d.file.name):
-                d.size = d.file.size / 1000 / 1000
+                file_size = d.file.size /1000 /1000
+                d.size = round(file_size, 2)  # round the file size to 2 decimal digits, unless second digit is a 0
             else:
                 # For some reason the file has been deleted, update the databases to remove this entry
                 Data.objects.get(id=d.id).delete()

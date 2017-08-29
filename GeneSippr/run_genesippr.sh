@@ -21,12 +21,12 @@ fi
 wait
 
 #must be run without the "-it" as this will give an error on execute with "-i" for an interactive display
-docker run -i -v $basepath:$basepath --name genesipprcontainer$containernumber genesippr method.py /home/bownessn/Documents/GeneSippr_Portal/documents/$folderpath -s $basepath/documents/$folderpath/sequences -t $basepath/GeneSippr/targets
+docker run -i -v $basepath:$basepath --name genesipprcontainer$containernumber genesippr method.py $basepath/documents/$folderpath -s $basepath/documents/$folderpath/sequences -t $basepath/GeneSippr/targets
 
 wait
 
 echo " "
-echo "Completed running geneseekr for the folder: $folderpath"
+echo "Completed running genesippr for the folder: $folderpath"
 echo "Removing container now, since it has finished: genesipprcontainer$containernumber"
 docker rm genesipprcontainer$containernumber
 #Finished running geneseekr

@@ -107,9 +107,9 @@
             <div class="col-md-12">
                 <div class="panel-group" id="accordion">
                     <div class="panel panel-default" id="panel3">
-                        <div class="panel-heading">
+                        <div style="background-color: #dadada" class="panel-heading">
                             <h4 class="panel-title">
-                                <a data-toggle="collapse" data-target="#collapseThree" href="#collapseThree">Usage and Additional Info</a>
+                                <a data-toggle="collapse" data-target="#collapseThree" href="#collapseThree">&nbsp&nbsp&nbsp&nbsp Usage and Additional Info</a>
                             </h4>
                         </div>
                         <div id="collapseThree" class="panel-collapse collapse">
@@ -125,9 +125,9 @@
                 <div class="col-md-12">
                     <div class="panel-group" id="accordion">
                         <div class="panel panel-default" id="panel4">
-                            <div class="panel-heading">
+                            <div style="background-color: #dadada" class="panel-heading">
                                 <h4 class="panel-title">
-                                    <a data-toggle="collapse" data-target="#collapseSymbols" href="#collapseSymbols">Symbol Legend</a>
+                                    <a data-toggle="collapse" data-target="#collapseSymbols" href="#collapseSymbols">&nbsp&nbsp&nbsp&nbsp Symbol Legend</a>
                                 </h4>
                             </div>
                             <div id="collapseSymbols" class="panel-collapse collapse">
@@ -337,8 +337,7 @@
                                 <!-- If there are results in the genesippr report, the output they will be displayed on the webpage -->
                                 {% if genesippr %}
                                 <br>
-                                <br>
-                                    <h3 style="font-size: 24px; text-decoration: underline;">More Details</h3>
+                                    <h3 style="font-size: 24px; text-decoration: underline; border-top: 4px solid black"></h3>
                                 <br>
                                     <table id="T3" class="table table-striped table-condensed">
                                         <caption style="font-size: 18px;">More information from the genesippr report.<br></caption>
@@ -391,8 +390,11 @@
                 dom: 'CT<"clear">lfrtip',
                 tableTools: {
                     "aButtons": [ "copy", "xls","print"],
-                    "sSwfPath": '{% static 'swf/copy_csv_xls_pdf.swf' %}'
-                },
+                    "sSwfPath": '{% static 'swf/copy_csv_xls_pdf.swf' %}' },
+                colVis: {
+                        "buttonText": "Toggle Chart Columns",
+                        exclude: [0, 1]  //also a column six where results should be that is not excluded
+                    },
                 "sScrollX": "100%"
             } );
 
